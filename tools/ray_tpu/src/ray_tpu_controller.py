@@ -137,7 +137,7 @@ class RayTpuController(tpu_controller.TPUController):
         "mkdir -p /dev/shm",
         "sudo mount -t tmpfs -o size=100g tmpfs /dev/shm",
         "sudo pip3 install ray[default]",
-        "ray start --resources='{\"%s\": 1}' --address=%s"
+        "ray start --resources='{\"%s\": 1, \"profile_cpu\": 1}' --address=%s"
         % (self.resource_name, self._head_addr),
     ]
 
@@ -198,10 +198,13 @@ class RayTpuController(tpu_controller.TPUController):
       num_trials += 1
       time.sleep(30)
 
-  def queue_tpu_workload(self, job: TpuRayJob, reset_queue=False):
+  def queue_tpu_workload(self, job: TpuRayJob, reset_queue=False, resource_name=None):
     if reset_queue:
       self._queued_jobs = []
-    job.entrypoint_resources = {self.resource_name: 1}
+    
+    if resource_name is None:
+      resource_name = self.resource_name
+    job.entrypoint_resources = {resource_name: 1}
     for _ in range(self.get_num_nodes()):
       self._queued_jobs.append(self.job_client.submit_job(**job.to_ray_job()))
     logging.info("Queued %d jobs.", len(self._queued_jobs))
